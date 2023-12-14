@@ -1,0 +1,1 @@
+iptables -A INPUT -p icmp -m connlimit --connlimit-above 3 -j REJECT
