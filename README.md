@@ -8,141 +8,123 @@ Nama | NRP
 Thoriq Afif Habibi | 5025211154
 Radhiyan Muhammad Hisan | 5025211166
 
-# Pembagian Subnet
-Sebelum melakukan pembagian IP perlu dilakukan pembagian dan penamaan subnet terlebih dahulu. Penamaan bertujuan untuk mempermudah melakukan perhitungan. Berikut pembagian dan penamaan subnet yang menjadi dasar perhitungan _subnetting_:<br>
-![tabel-subnet](./img/tabel-subnet.png)<br>
-![pembagian-subnet](./img/subnet.jpeg)<br>
-![tree vlsm](./F10_Tree-VLSM.jpg)
+# Daftar Isi
+- [Subnetting](#subnetting)
+- [Konfigurasi Jaringan](#konfigurasi-jaringan)
+- [Soal](#soal)
 
-## Konfigurasi Jaringan
-### Aura
-```
-auto eth0
-iface eth0 inet dhcp
+# Subnetting
+![tabel-subnet](img/tabel-subnet.png)<br>
+![pembagian-subnet](img/subnet.jpg)<br>
+![tree](img/F10_Tree-Praktikum5.jpg)
 
-auto eth1
-iface eth1 inet static
-	address 192.226.0.21
-	netmask 255.255.255.252
+# Konfigurasi Jaringan
+1. Konfigurasi jaringan ada [di sini](NETCONF.md)
+2. _Routing_ [di sini](routing.sh)
+3. DHCP [di sini](dhcp.sh)
+4. DHCP Relay [di sini](relay.sh)
+5. Web Server [di sini](webServer.sh)
+6. Client [di sini](client.sh)
 
-auto eth2
-iface eth2 inet static
-	address 192.226.0.1
-	netmask 255.255.255.252
-```
-
-### Frieren
-```
-auto eth0
-iface eth0 inet static
-	address 192.226.0.2
-	netmask 255.255.255.252
-
-auto eth1
-iface eth1 inet static
-	address 192.226.0.9
-	netmask 255.255.255.252
-
-# ke Stark
-auto eth2
-iface eth2 inet static
-	address 192.226.0.5
-	netmask 255.255.255.252
+# Soal
+## 1
+```shell
+IPETH0="$(ip -br a | grep eth0 | awk '{print $NF}' | cut -d'/' -f1)"
+iptables -t nat -A POSTROUTING -o eth0 -j SNAT --to-source "$IPETH0" -s 192.226.0.0/20
 ```
 
-### Stark
-```
-# ke Frieren
-auto eth0
-iface eth0 inet static
-	address 192.226.0.6
-	netmask 255.255.255.252
-	gateway 192.226.0.5
+## 2
+Menambahkan aturan untuk paket masuk, keluar, dan diteruskan
+```shell
+iptables -A INPUT -p tcp -j DROP
+iptables -A OUTPUT -p tcp -j DROP
+iptables -A FORWARD -p tcp -j DROP
+iptables -A INPUT -p tcp --dport 8080 -j ACCEPT
+iptables -A OUTPUT -p tcp --dport 8080 -j ACCEPT
+iptables -A INPUT -p udp -j DROP
+iptables -A OUTPUT -p udp -j DROP
+iptables -A FORWARD -p udp -j DROP
+
+# testing : 
+nc -lnvp 8080 # di node firewall berjalan
+nc IP 8080 # terserah
 ```
 
-### Himmel
+## 3
+```shell
+iptables -A INPUT -p icmp -m connlimit --connlimit-above 3 --connlimit-mask 0 -j DROP
+# atau
+iptables -A INPUT -p icmp -m connlimit --connlimit-above 3 --connlimit-mask 0 -j REJECT
+
+# Testing:
+ping 192.226.0.18 # Revolte
+ping 192.226.0.14 # Richter
 ```
-auto eth0
-iface eth0 inet static
-	address 192.226.0.10
-	netmask 255.255.255.252
+Jika menggunakan `DROP`, setelah ada percobaan ping dari node keempat, maka status ping di semua node akan menghasilkan **Destination host unreachable**. Sedangkan jika menggunakan `REJECT`, proses ping di semua node akan beku/diam
 
-auto eth1
-iface eth1 inet static
-	address 192.226.0.129
-	netmask 255.255.255.128
+## 4
+```shell
+iptables -A INPUT -p tcp --dport 22 -s 192.226.4.0/22  -j ACCEPT
+iptables -A INPUT -p tcp --dport 22 -j REJECT
 
-auto eth2
-iface eth2 inet static
-	address 192.226.2.1
-	netmask 255.255.254.0
-```
-
-### Fern
-```
-auto eth0
-iface eth0 inet static
-	address 192.226.0.130
-	netmask 255.255.255.128
-
-auto eth1
-iface eth1 inet static
-	address 192.226.0.17
-	netmask 255.255.255.252
-
-auto eth2
-iface eth2 inet static
-	address 192.226.0.13
-	netmask 255.255.255.252
+# Testing:
+ssh 192.226.4.2 # Sein
+ssh 192.226.0.6 # Stark
 ```
 
-### Richter
-```
-auto eth0
-iface eth0 inet static
-	address 192.226.0.14
-	netmask 255.255.255.252
-	gateway 192.226.0.13
+## 5
+```shell
+iptables -A INPUT -p tcp --dport 80  -m state --state NEW -m time --timestart 08:00 --timestop 16:00 -m time --days Mon,Tue,Wed,Thu,Fri -j ACCEPT
+iptables -A INPUT -p tcp --dport 80  -m state --state NEW -j REJECT
+iptables -A INPUT -p tcp --dport 443  -m state --state NEW -m time --timestart 08:00 --timestop 16:00 -m time --days Mon,Tue,Wed,Thu,Fri -j ACCEPT
+iptables -A INPUT -p tcp --dport 443  -m state --state NEW -j REJECT
+
+# Testing :
+date -s "Tue Dec 14 10:00"
+lynx 192.226.4.2 # Sein
+lynx 192.226.0.6 # Stark
 ```
 
-### Revolte
-```
-auto eth0
-iface eth0 inet static
-	address 192.226.0.18
-	netmask 255.255.255.252
-	gateway 192.226.0.17
+## 6
+```shell
+iptables -A INPUT -p tcp --dport 80 -m state --state NEW -m time --timestart 12:00 --timestop 13:00 -m time --days Mon,Tue,Wed,Thu -j REJECT
+iptables -A INPUT -p tcp --dport 80 -m state --state NEW -m time --timestart 11:00 --timestop 13:00 -m time --days Fri -j REJECT
+iptables -A INPUT -p tcp --dport 443 -m state --state NEW -m time --timestart 12:00 --timestop 13:00 -m time --days Mon,Tue,Wed,Thu -j REJECT
+iptables -A INPUT -p tcp --dport 443 -m state --state NEW -m time --timestart 11:00 --timestop 13:00 -m time --days Fri -j REJECT
+
+# Testing :
+date -s "Fri Dec 15 12:00"
+lynx 192.226.4.2 # Sein
+lynx 192.226.0.6 # Stark
 ```
 
-### Heiter
-```
-auto eth0
-iface eth0 inet static
-	address 192.226.0.22
-	netmask 255.255.255.252
+## 7
+```shell
+iptables -A PREROUTING -p tcp --dport 80 -m state --state NEW -m nth --counter 0 --every 2 --packet 0 -j DNAT --to-destination 192.226.4.2:80
+iptables -A PREROUTING -p tcp --dport 80 -m state --state NEW -m nth --counter 0 --every 2 --packet 1 -j DNAT --to-destination 192.226.0.6:80
+iptables -A PREROUTING -p tcp --dport 443 -m state --state NEW -m nth --counter 0 --every 2 --packet 0 -j DNAT --to-destination 192.226.4.2:443
+iptables -A PREROUTING -p tcp --dport 443 -m state --state NEW -m nth --counter 0 --every 2 --packet 1 -j DNAT --to-destination 192.226.0.6:443
 
-auto eth1
-iface eth1 inet static
-	address 192.226.8.1
-	netmask 255.255.248.0
-
-auto eth2
-iface eth2 inet static
-	address 192.226.4.1
-	netmask 255.255.252.0
+# Testing :
+lynx 192.226.4.2 # Sein
+lynx 192.226.0.6 # Stark
 ```
 
-### Sein
-```
-auto eth0
-iface eth0 inet static
-	address 192.226.4.2
-	netmask 255.255.252.0
-	gateway 192.226.4.1
+## 8
+```shell
+iptables -A INPUT -p tcp --dport 80 -s 192.226.0.16/30 -m time --datestart 2023-12-15 --datestop 2024-02-15 -j REJECT
+
+# Testing :
+date -s "2024-01-10 12:34:56"
 ```
 
-### LaubHills, SchwerMountain, TurkRegion, GrobeForest
-```
-auto eth0
-iface eth0 inet dhcp
+## 9
+```shell
+iptables -N portscan
+
+iptables -A INPUT -m recent --name portscan --update --seconds 600 --hitcount 20 -j REJECT
+iptables -A FORWARD -m recent --name portscan --update --seconds 600 --hitcount 20 -j REJECT
+
+iptables -A INPUT -m recent --name portscan --set -j ACCEPT
+iptables -A FORWARD -m recent --name portscan --set -j ACCEPT
 ```
