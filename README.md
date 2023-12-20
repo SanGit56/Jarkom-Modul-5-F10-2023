@@ -140,6 +140,7 @@ Testing:
 ![Alt text](6b.png)
 
 ## 7. setiap client yang mengakses Sein dengan Port 80 akan didistribusikan secara bergantian pada Sein dan Stark secara berurutan dan request dari client yang mengakses Stark dengan port 443 akan didistribusikan secara bergantian pada Sein dan Stark secara berurutan.
+Distribusi dapat dilakukan dengan menambahkan aturan untuk mengarahkan destinasi ke IP Sein atau Stark pada router Heiter. Scripy iptables untuk menyelesaikan permasalahan ini adalah sebagai berikut:
 ```shell
 iptables -A PREROUTING -t nat -p tcp --dport 80 -d 192.226.4.2 -m statistic --mode nth --every 2 --packet 0 -j DNAT --to-destination 192.226.4.2
 iptables -A PREROUTING -t nat -p tcp --dport 80 -d 192.226.4.2 -j DNAT --to-destination 192.226.0.6
@@ -150,6 +151,12 @@ iptables -A PREROUTING -t nat -p tcp --dport 443 -d 192.226.0.6 -j DNAT --to-des
 curl 192.226.4.2 # Sein
 curl 192.226.0.6 # Stark
 ```
+
+Testing dilakukan dari client TurkRegion sebagai berikut:
+- port 80<br>
+![Alt text](7a.png)
+- port 443<br>
+![Alt text](7b.png)
 
 ## 8. maka subnet dengan masyarakat yang berada pada Revolte dilarang keras mengakses WebServer hingga masa pencoblosan pemilu kepala suku 2024 berakhir.
 Untuk melarang revolte mengakses webserver selama masa pemilu, perlu ditambahkan aturan iptables pada Sein dan Stark sebagai berikut:
@@ -185,3 +192,8 @@ Untuk melakukan testing, kami menggunakan nmap dengan 2 skenario, scanning 10 po
 ![Alt text](img/9a.png)
 - 30 port<br>
 ![Alt text](img/9b.png)
+
+## 10. setiap node server dan router ditambahkan logging paket yang di-drop dengan standard syslog level
+```shell
+iptables -A INPUT  -j LOG --log-level debug --log-prefix 'Dropped Packet' -m limit --limit 1/second --limit-burst 10
+```
